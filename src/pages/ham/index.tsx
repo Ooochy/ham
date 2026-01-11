@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 
 type BankListItem = {
   id: string
@@ -26,6 +26,42 @@ type Mode = 'preview' | 'quiz'
 type ShuffleMap = {
   displayToOriginal: Record<string, string>
   originalToDisplay: Record<string, string>
+}
+
+type SavedQuizPosition = {
+  bankId: string
+  questionId: string
+  index: number
+  savedAt: number
+}
+
+const STORAGE_KEY_LAST_POSITION = 'ham:lastQuizPosition:v1'
+
+function readSavedPosition(): SavedQuizPosition | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LAST_POSITION)
+    if (!raw) return null
+    const v = JSON.parse(raw) as Partial<SavedQuizPosition>
+    if (!v.bankId || !v.questionId) return null
+    const index = Number.isFinite(v.index as number) ? Number(v.index) : 0
+    const savedAt = Number.isFinite(v.savedAt as number) ? Number(v.savedAt) : Date.now()
+    return {
+      bankId: String(v.bankId),
+      questionId: String(v.questionId),
+      index: Math.max(0, index),
+      savedAt
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeSavedPosition(v: SavedQuizPosition) {
+  try {
+    localStorage.setItem(STORAGE_KEY_LAST_POSITION, JSON.stringify(v))
+  } catch {
+    // ignore
+  }
 }
 
 function getApiBase(): string {
@@ -82,9 +118,11 @@ function toDisplayAnswer(originalAnswer: string, originalToDisplay: Record<strin
 export default function Ham() {
   const apiBase = useMemo(() => getApiBase(), [])
 
-  const [mode, setMode] = useState<Mode>('preview')
+  const initialSaved = useMemo(() => readSavedPosition(), [])
+
+  const [mode, setMode] = useState<Mode>(() => (initialSaved ? 'quiz' : 'preview'))
   const [banks, setBanks] = useState<BankListItem[]>([])
-  const [selectedBankId, setSelectedBankId] = useState<string>('a')
+  const [selectedBankId, setSelectedBankId] = useState<string>(() => initialSaved?.bankId || 'a')
   const [bank, setBank] = useState<BankPayload | null>(null)
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([])
   const [index, setIndex] = useState(0)
@@ -93,12 +131,17 @@ export default function Ham() {
   const [resultText, setResultText] = useState<string>('')
   const [error, setError] = useState<string>('')
 
+  const [jumpValue, setJumpValue] = useState<string>('')
+
   const optionShuffleByIdRef = useRef<Map<string, ShuffleMap>>(new Map())
+  const restoredOnceRef = useRef(false)
 
   const selectedBank = useMemo(
     () => banks.find((b) => b.id === selectedBankId) || null,
     [banks, selectedBankId]
   )
+
+  const canQuizLoad = selectedBank?.hasQuestions ?? true
 
   const pdfUrl = useMemo(() => {
     if (selectedBank?.pdfUrl) return `${apiBase}${selectedBank.pdfUrl}`
@@ -174,11 +217,41 @@ export default function Ham() {
       if (!res.ok) throw new Error(`加载题库失败：${res.status}`)
       const data = (await res.json()) as BankPayload
       setBank(data)
-      setSessionQuestions(data.questions || [])
-      setIndex(0)
+      const questions = data.questions || []
+      setSessionQuestions(questions)
+
+      const saved = readSavedPosition()
+      if (saved && saved.bankId === bankId && saved.questionId && questions.length > 0) {
+        const found = questions.findIndex((q) => q.id === saved.questionId)
+        if (found >= 0) {
+          setIndex(found)
+        } else {
+          setIndex(Math.min(Math.max(0, saved.index || 0), questions.length - 1))
+        }
+      } else {
+        setIndex(0)
+      }
     } catch (e: any) {
       setError(e?.message || String(e))
     }
+  }
+
+  function jumpTo(valueRaw: string) {
+    const value = String(valueRaw || '').trim()
+    if (!value || sessionQuestions.length === 0) return
+
+    // 纯数字 => 题号（1-based）
+    if (/^\d+$/.test(value)) {
+      const n = Number(value)
+      const nextIndex = n - 1
+      if (!Number.isFinite(nextIndex)) return
+      setIndex(Math.min(Math.max(0, nextIndex), sessionQuestions.length - 1))
+      return
+    }
+
+    // 否则当作题目 ID
+    const found = sessionQuestions.findIndex((q) => q.id === value)
+    if (found >= 0) setIndex(found)
   }
 
   function toggleSelect(letter: string, multi: boolean) {
@@ -246,12 +319,38 @@ export default function Ham() {
   }, [])
 
   useEffect(() => {
+    // 刷新/重进：如果上次在练习模式且有记录，则自动加载并恢复
+    if (restoredOnceRef.current) return
+    const saved = initialSaved
+    if (!saved) return
+    if (mode !== 'quiz') return
+    if (!canQuizLoad) return
+
+    restoredOnceRef.current = true
+    loadBankQuestions(saved.bankId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, canQuizLoad, initialSaved])
+
+  useEffect(() => {
     // 切题时清理本题状态
     resetPerQuestionState()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index])
 
-  const styles: Record<string, React.CSSProperties> = {
+  useEffect(() => {
+    // 每次切题都把“当前题”持久化，刷新/重进能续上
+    if (mode !== 'quiz') return
+    const q = current
+    if (!q) return
+    writeSavedPosition({
+      bankId: selectedBankId,
+      questionId: q.id,
+      index,
+      savedAt: Date.now()
+    })
+  }, [mode, selectedBankId, index, current])
+
+  const styles: Record<string, CSSProperties> = {
     page: { height: '100%', display: 'flex', flexDirection: 'column' },
     header: {
       padding: '12px 16px',
@@ -271,6 +370,7 @@ export default function Ham() {
     quiz: { height: '100%', overflow: 'auto', padding: 16, boxSizing: 'border-box' },
     row: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 },
     button: { padding: '6px 10px', fontSize: 14 },
+    jumpInput: { padding: '6px 8px', fontSize: 14, width: 180 },
     qbox: { maxWidth: 980 },
     qmeta: { fontSize: 12, color: '#666', marginBottom: 8 },
     qtext: { fontSize: 16, lineHeight: 1.5, margin: '0 0 12px', whiteSpace: 'pre-wrap' },
@@ -286,8 +386,6 @@ export default function Ham() {
     hint: { fontSize: 12, color: '#666' },
     error: { color: '#b3261e', fontSize: 12 }
   }
-
-  const canQuizLoad = selectedBank?.hasQuestions ?? true
 
   const questionSuffix =
     bank?.questions && sessionQuestions.length !== bank.questions.length
@@ -382,6 +480,25 @@ export default function Ham() {
                 onClick={() => setIndex((v) => Math.min(sessionQuestions.length - 1, v + 1))}
               >
                 下一题
+              </button>
+
+              <input
+                style={styles.jumpInput}
+                value={jumpValue}
+                placeholder="跳转：题号(如 12) / ID"
+                onChange={(e) => setJumpValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') jumpTo(jumpValue)
+                }}
+                disabled={!bank || sessionQuestions.length === 0}
+              />
+              <button
+                style={styles.button}
+                type="button"
+                disabled={!bank || sessionQuestions.length === 0 || !jumpValue.trim()}
+                onClick={() => jumpTo(jumpValue)}
+              >
+                跳转
               </button>
               <button
                 style={styles.button}
