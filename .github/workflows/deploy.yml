@@ -52,6 +52,8 @@ jobs:
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
+          echo "List loaded SSH keys (should see one key)"
+          ssh-add -l || true
           echo "Testing SSH login..."
           ssh -vvv -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" true
           echo "Checking remote path permissions..."
