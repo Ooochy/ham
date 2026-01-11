@@ -21,7 +21,7 @@ type BankPayload = {
   questions: Question[]
 }
 
-type Mode = 'preview' | 'quiz'
+type Mode = 'preview' | 'quiz' | 'wrong'
 
 type ShuffleMap = {
   displayToOriginal: Record<string, string>
@@ -36,6 +36,30 @@ type SavedQuizPosition = {
 }
 
 const STORAGE_KEY_LAST_POSITION = 'ham:lastQuizPosition:v1'
+
+type WrongByBank = Record<string, string[]>
+
+const STORAGE_KEY_WRONG_BY_BANK = 'ham:wrongByBank:v1'
+
+function readWrongByBank(): WrongByBank {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_WRONG_BY_BANK)
+    if (!raw) return {}
+    const v = JSON.parse(raw) as unknown
+    if (!v || typeof v !== 'object') return {}
+    return v as WrongByBank
+  } catch {
+    return {}
+  }
+}
+
+function writeWrongByBank(v: WrongByBank) {
+  try {
+    localStorage.setItem(STORAGE_KEY_WRONG_BY_BANK, JSON.stringify(v))
+  } catch {
+    // ignore
+  }
+}
 
 function readSavedPosition(): SavedQuizPosition | null {
   try {
@@ -133,6 +157,8 @@ export default function Ham() {
 
   const [jumpValue, setJumpValue] = useState<string>('')
 
+  const [wrongByBank, setWrongByBank] = useState<WrongByBank>(() => readWrongByBank())
+
   const optionShuffleByIdRef = useRef<Map<string, ShuffleMap>>(new Map())
   const bankCacheRef = useRef<Map<string, BankPayload>>(new Map())
   const inflightRef = useRef<Map<string, Promise<BankPayload>>>(new Map())
@@ -151,6 +177,11 @@ export default function Ham() {
   }, [apiBase, selectedBank, selectedBankId])
 
   const current = sessionQuestions[index] || null
+
+  const wrongIdsForSelected = useMemo(() => {
+    const ids = wrongByBank[selectedBankId] || []
+    return new Set(ids)
+  }, [wrongByBank, selectedBankId])
 
   function resetPerQuestionState() {
     setSelected(new Set())
@@ -179,6 +210,32 @@ export default function Ham() {
     const m: ShuffleMap = { displayToOriginal, originalToDisplay }
     optionShuffleByIdRef.current.set(q.id, m)
     return m
+  }
+
+  async function fetchBankPayload(bankId: string): Promise<BankPayload> {
+    const cached = bankCacheRef.current.get(bankId)
+    if (cached) return cached
+
+    const existing = inflightRef.current.get(bankId)
+    const p: Promise<BankPayload> =
+      existing ||
+      (async () => {
+        const res = await fetch(`${apiBase}/api/banks/${encodeURIComponent(bankId)}`, {
+          cache: 'no-store'
+        })
+        if (!res.ok) throw new Error(`加载题库失败：${res.status}`)
+        return (await res.json()) as BankPayload
+      })()
+
+    if (!existing) inflightRef.current.set(bankId, p)
+
+    try {
+      const data = await p
+      bankCacheRef.current.set(bankId, data)
+      return data
+    } finally {
+      inflightRef.current.delete(bankId)
+    }
   }
 
   async function loadBanks() {
@@ -230,34 +287,57 @@ export default function Ham() {
       }
     }
 
-    const cached = bankCacheRef.current.get(bankId)
-    if (cached) {
-      applyData(cached)
-      return
-    }
-
     try {
-      const existing = inflightRef.current.get(bankId)
-      const p: Promise<BankPayload> =
-        existing ||
-        (async () => {
-          const res = await fetch(`${apiBase}/api/banks/${encodeURIComponent(bankId)}`, {
-            cache: 'no-store'
-          })
-          if (!res.ok) throw new Error(`加载题库失败：${res.status}`)
-          return (await res.json()) as BankPayload
-        })()
-
-      if (!existing) inflightRef.current.set(bankId, p)
-
-      const data = await p
-      bankCacheRef.current.set(bankId, data)
-      inflightRef.current.delete(bankId)
+      const data = await fetchBankPayload(bankId)
       applyData(data)
     } catch (e: any) {
-      inflightRef.current.delete(bankId)
       setError(e?.message || String(e))
     }
+  }
+
+  async function loadWrongQuestions(bankId: string) {
+    setError('')
+    setBank(null)
+    setSessionQuestions([])
+    setIndex(0)
+    optionShuffleByIdRef.current = new Map()
+    resetPerQuestionState()
+
+    try {
+      const data = await fetchBankPayload(bankId)
+      setBank(data)
+      const ids = new Set((readWrongByBank()[bankId] || []).filter(Boolean))
+      const questions = (data.questions || []).filter((q) => ids.has(q.id))
+      setSessionQuestions(questions)
+      setIndex(0)
+    } catch (e: any) {
+      setError(e?.message || String(e))
+    }
+  }
+
+  function markWrong(bankId: string, questionId: string) {
+    if (!bankId || !questionId) return
+    setWrongByBank((prev) => {
+      const prevIds = prev[bankId] || []
+      if (prevIds.includes(questionId)) return prev
+      const next: WrongByBank = { ...prev, [bankId]: [...prevIds, questionId] }
+      writeWrongByBank(next)
+      return next
+    })
+  }
+
+  function clearWrong(bankId: string, questionId: string) {
+    if (!bankId || !questionId) return
+    setWrongByBank((prev) => {
+      const prevIds = prev[bankId] || []
+      if (!prevIds.includes(questionId)) return prev
+      const nextIds = prevIds.filter((id) => id !== questionId)
+      const next: WrongByBank = { ...prev }
+      if (nextIds.length === 0) delete next[bankId]
+      else next[bankId] = nextIds
+      writeWrongByBank(next)
+      return next
+    })
   }
 
   function jumpTo(valueRaw: string) {
@@ -322,6 +402,22 @@ export default function Ham() {
         : `错误 ❌（正确答案：${displayAnswer || '未知'}；你的选择：${chosen.sort().join('') || '未选'}）`
     )
     setRevealed(true)
+
+    if (ok) {
+      clearWrong(selectedBankId, current.id)
+
+      // 错题模式下：答对后从错题集中移除并跳到下一题（或空集提示）
+      if (mode === 'wrong') {
+        setSessionQuestions((prev) => {
+          const next = prev.filter((q) => q.id !== current.id)
+          setIndex((i) => Math.min(i, Math.max(0, next.length - 1)))
+          return next
+        })
+        resetPerQuestionState()
+      }
+    } else {
+      markWrong(selectedBankId, current.id)
+    }
   }
 
   function random30() {
@@ -354,6 +450,14 @@ export default function Ham() {
     loadBankQuestions(saved.bankId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, canQuizLoad, initialSaved])
+
+  useEffect(() => {
+    // 切到错题模式：显示当前题库全部错题
+    if (mode !== 'wrong') return
+    if (!canQuizLoad) return
+    loadWrongQuestions(selectedBankId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, selectedBankId, canQuizLoad])
 
   useEffect(() => {
     // 切题时清理本题状态
@@ -432,6 +536,7 @@ export default function Ham() {
             <select style={styles.select} value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
               <option value="preview">PDF 预览</option>
               <option value="quiz">逐题练习</option>
+              <option value="wrong">错题模式</option>
             </select>
           </label>
 
@@ -470,25 +575,27 @@ export default function Ham() {
           <iframe title="PDF 预览" style={styles.viewer} src={pdfUrl} />
         </section>
 
-        <section style={mode === 'quiz' ? styles.panelActive : styles.panel}>
+        <section style={mode === 'quiz' || mode === 'wrong' ? styles.panelActive : styles.panel}>
           <div style={styles.quiz}>
             <div style={styles.row}>
               <button
                 style={styles.button}
                 type="button"
                 disabled={!canQuizLoad}
-                onClick={() => loadBankQuestions(selectedBankId)}
+                onClick={() => (mode === 'wrong' ? loadWrongQuestions(selectedBankId) : loadBankQuestions(selectedBankId))}
               >
-                加载
+                {mode === 'wrong' ? '加载错题' : '加载'}
               </button>
-              <button
-                style={styles.button}
-                type="button"
-                disabled={!bank || sessionQuestions.length === 0}
-                onClick={random30}
-              >
-                随机30题
-              </button>
+              {mode === 'quiz' ? (
+                <button
+                  style={styles.button}
+                  type="button"
+                  disabled={!bank || sessionQuestions.length === 0}
+                  onClick={random30}
+                >
+                  随机30题
+                </button>
+              ) : null}
               <button
                 style={styles.button}
                 type="button"
@@ -549,6 +656,7 @@ export default function Ham() {
                     来源：{bank?.source || '未加载'} ｜ 题目：{index + 1} / {sessionQuestions.length} ｜ ID：
                     {current.id}
                     {questionSuffix}
+                    {mode === 'wrong' ? `  |  错题数：${wrongIdsForSelected.size}` : ''}
                   </div>
                   <p style={styles.qtext}>{current.q}</p>
                   <div style={styles.options}>
@@ -599,7 +707,11 @@ export default function Ham() {
                   <div style={{ fontSize: 14 }}>{resultText}</div>
                 </>
               ) : (
-                <div style={{ fontSize: 14 }}>尚未加载题库数据。</div>
+                <div style={{ fontSize: 14 }}>
+                  {mode === 'wrong'
+                    ? '当前题库暂无错题（或尚未加载）。'
+                    : '尚未加载题库数据。'}
+                </div>
               )}
             </div>
           </div>
