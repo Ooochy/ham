@@ -1,0 +1,57 @@
+.hamPage {
+	min-height: 100dvh;
+}
+
+.hamRow {
+	button {
+		touch-action: manipulation;
+	}
+}
+
+@media (max-width: 640px) {
+	.hamHeader {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+
+	.hamControls {
+		width: 100%;
+		gap: 8px;
+	}
+
+	.hamControls label {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+	}
+
+	.hamSelect {
+		width: 100%;
+		max-width: 260px;
+	}
+
+	.hamPdfLink {
+		width: 100%;
+	}
+
+	.hamQuiz {
+		padding: 12px;
+	}
+
+	.hamRow {
+		gap: 8px;
+		margin-bottom: 10px;
+	}
+
+	.hamRow button {
+		flex: 1 1 auto;
+	}
+
+	.hamJumpInput {
+		flex: 1 1 160px;
+		width: 100% !important;
+	}
+}

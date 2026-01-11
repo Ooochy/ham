@@ -1,5 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 
+import './index.scss'
+
 type BankListItem = {
   id: string
   label: string
@@ -479,7 +481,7 @@ export default function Ham() {
   }, [mode, selectedBankId, index, current])
 
   const styles: Record<string, CSSProperties> = {
-    page: { height: '100%', display: 'flex', flexDirection: 'column' },
+    page: { height: '100%', minHeight: '100dvh', display: 'flex', flexDirection: 'column' },
     header: {
       padding: '12px 16px',
       borderBottom: '1px solid #e5e5e5',
@@ -527,13 +529,20 @@ export default function Ham() {
   const multi = current ? isMultiAnswer(displayAnswer) : false
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <h1 style={styles.h1}>业余电台操作证书考试题库（2025年版）</h1>
-        <div style={styles.controls}>
+    <div className="hamPage" style={styles.page}>
+      <div className="hamHeader" style={styles.header}>
+        <h1 className="hamTitle" style={styles.h1}>
+          业余电台操作证书考试题库（2025年版）
+        </h1>
+        <div className="hamControls" style={styles.controls}>
           <label>
             模式：
-            <select style={styles.select} value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+            <select
+              className="hamSelect"
+              style={styles.select}
+              value={mode}
+              onChange={(e) => setMode(e.target.value as Mode)}
+            >
               <option value="preview">PDF 预览</option>
               <option value="quiz">逐题练习</option>
               <option value="wrong">错题模式</option>
@@ -543,6 +552,7 @@ export default function Ham() {
           <label>
             题库：
             <select
+              className="hamSelect"
               style={styles.select}
               value={selectedBankId}
               onChange={(e) => {
@@ -562,7 +572,7 @@ export default function Ham() {
             </select>
           </label>
 
-          <a href={pdfUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14 }}>
+          <a className="hamPdfLink" href={pdfUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14 }}>
             新标签页打开PDF
           </a>
           {/* <span style={styles.hint}>后端：{apiBase}</span> */}
@@ -570,14 +580,14 @@ export default function Ham() {
         </div>
       </div>
 
-      <div style={styles.main}>
+      <div className="hamMain" style={styles.main}>
         <section style={mode === 'preview' ? styles.panelActive : styles.panel}>
           <iframe title="PDF 预览" style={styles.viewer} src={pdfUrl} />
         </section>
 
         <section style={mode === 'quiz' || mode === 'wrong' ? styles.panelActive : styles.panel}>
-          <div style={styles.quiz}>
-            <div style={styles.row}>
+          <div className="hamQuiz" style={styles.quiz}>
+            <div className="hamRow" style={styles.row}>
               <button
                 style={styles.button}
                 type="button"
@@ -614,6 +624,7 @@ export default function Ham() {
               </button>
 
               <input
+                className="hamJumpInput"
                 style={styles.jumpInput}
                 value={jumpValue}
                 placeholder="跳转：题号(如 12) / ID"
