@@ -45,6 +45,18 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
+      - name: Debug SSH connectivity
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          echo "Testing SSH login..."
+          ssh -vvv -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" true
+          echo "Checking remote path permissions..."
+          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "ls -ld \"$DEPLOY_PATH\""
+
       - name: Deploy via rsync
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
