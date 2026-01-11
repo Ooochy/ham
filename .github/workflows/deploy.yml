@@ -24,7 +24,7 @@ jobs:
           # cache: npm
 
       - name: Install
-        run: npm ci
+        run: npm ci --include=dev  # ensure devDependencies (vite) are available for build
 
       - name: Verify Types
         run: ls node_modules/@types/node  # 确认类型文件是否存在
