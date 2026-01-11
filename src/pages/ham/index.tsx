@@ -536,7 +536,7 @@ export default function Ham() {
         </h1>
         <div className="hamControls" style={styles.controls}>
           <label>
-            模式：
+            <div className="label">模式：</div>
             <select
               className="hamSelect"
               style={styles.select}
@@ -550,7 +550,7 @@ export default function Ham() {
           </label>
 
           <label>
-            题库：
+            <div className="label">题库：</div>
             <select
               className="hamSelect"
               style={styles.select}
@@ -573,7 +573,7 @@ export default function Ham() {
           </label>
 
           <a className="hamPdfLink" href={pdfUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14 }}>
-            新标签页打开PDF
+            新标签页打开原版题库PDF
           </a>
           {/* <span style={styles.hint}>后端：{apiBase}</span> */}
           {error ? <span style={styles.error}>错误：{error}</span> : null}
