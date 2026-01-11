@@ -1,8 +1,8 @@
 import { createBrowserRouter } from 'react-router-dom'
 import App from '../App'
-import Home from '../pages/Home'
-import About from '../pages/About'
-import NotFound from '../pages/NotFound'
+import Home from '../pages/home/Home'
+import NotFound from '../pages/NotFound/NotFound'
+import Ham from '../pages/ham'
 
 export const router = createBrowserRouter([
   {
@@ -10,12 +10,12 @@ export const router = createBrowserRouter([
     element: <App />,
     children: [
       {
-        index: true,
-        element: <Home />
+        path: 'ham',
+        element: <Ham />
       },
       {
-        path: 'about',
-        element: <About />
+        index: true,
+        element: <Home />
       },
       {
         path: '*',
