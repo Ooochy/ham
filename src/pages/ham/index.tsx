@@ -134,6 +134,8 @@ export default function Ham() {
   const [jumpValue, setJumpValue] = useState<string>('')
 
   const optionShuffleByIdRef = useRef<Map<string, ShuffleMap>>(new Map())
+  const bankCacheRef = useRef<Map<string, BankPayload>>(new Map())
+  const inflightRef = useRef<Map<string, Promise<BankPayload>>>(new Map())
   const restoredOnceRef = useRef(false)
 
   const selectedBank = useMemo(
@@ -210,12 +212,7 @@ export default function Ham() {
     optionShuffleByIdRef.current = new Map()
     resetPerQuestionState()
 
-    try {
-      const res = await fetch(`${apiBase}/api/banks/${encodeURIComponent(bankId)}`, {
-        cache: 'no-store'
-      })
-      if (!res.ok) throw new Error(`加载题库失败：${res.status}`)
-      const data = (await res.json()) as BankPayload
+    const applyData = (data: BankPayload) => {
       setBank(data)
       const questions = data.questions || []
       setSessionQuestions(questions)
@@ -231,7 +228,34 @@ export default function Ham() {
       } else {
         setIndex(0)
       }
+    }
+
+    const cached = bankCacheRef.current.get(bankId)
+    if (cached) {
+      applyData(cached)
+      return
+    }
+
+    try {
+      const existing = inflightRef.current.get(bankId)
+      const p: Promise<BankPayload> =
+        existing ||
+        (async () => {
+          const res = await fetch(`${apiBase}/api/banks/${encodeURIComponent(bankId)}`, {
+            cache: 'no-store'
+          })
+          if (!res.ok) throw new Error(`加载题库失败：${res.status}`)
+          return (await res.json()) as BankPayload
+        })()
+
+      if (!existing) inflightRef.current.set(bankId, p)
+
+      const data = await p
+      bankCacheRef.current.set(bankId, data)
+      inflightRef.current.delete(bankId)
+      applyData(data)
     } catch (e: any) {
+      inflightRef.current.delete(bankId)
       setError(e?.message || String(e))
     }
   }
@@ -436,7 +460,7 @@ export default function Ham() {
           <a href={pdfUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14 }}>
             新标签页打开PDF
           </a>
-          <span style={styles.hint}>后端：{apiBase}</span>
+          {/* <span style={styles.hint}>后端：{apiBase}</span> */}
           {error ? <span style={styles.error}>错误：{error}</span> : null}
         </div>
       </div>
