@@ -92,7 +92,7 @@ function writeSavedPosition(v: SavedQuizPosition) {
 
 function getApiBase(): string {
   const v = (import.meta as any).env?.VITE_HAM_API_BASE as string | undefined
-  return (v && v.trim()) || 'http://localhost:8001'
+  return (v && v.trim()) || 'http://39.106.43.84'
 }
 
 function escapeHtml(s: string): string {
