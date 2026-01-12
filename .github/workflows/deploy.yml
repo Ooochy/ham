@@ -23,9 +23,9 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t \
-            crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com/frontend/my-app:latest .
+            crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com/chy-app/ham:latest .
 
       - name: Push Docker image
         run: |
           docker push \
-            crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com/frontend/my-app:latest
+            crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com/chy-app/ham:latest
