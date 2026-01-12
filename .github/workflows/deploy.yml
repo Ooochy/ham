@@ -67,5 +67,12 @@ jobs:
               -u "$ACR_USERNAME" -p "$ACR_PASSWORD"
             docker pull "$IMAGE"
             docker rm -f "$CONTAINER" || true
+
+            # free host port if other container is using it
+            EXISTING_ON_PORT=$(docker ps -q --filter "publish=${HOST_PORT}")
+            if [ -n "$EXISTING_ON_PORT" ]; then
+              docker rm -f $EXISTING_ON_PORT || true
+            fi
+
             docker run -d --name "$CONTAINER" -p "$HOST_PORT":80 "$IMAGE"
           EOF
