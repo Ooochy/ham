@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          for var in SSH_HOST SSH_USER SSH_KEY ACR_USERNAME ACR_PASSWORD; do
+          for var in SSH_HOST SSH_USER SSH_KEY ACR_USERNAME ACR_PASSWORD HOST_PORT; do
             if [ -z "${!var:-}" ]; then
               echo "Missing required env: ${var}" >&2
               exit 1
@@ -61,18 +61,19 @@ jobs:
 
           chmod 600 ~/.ssh/id_rsa
 
-          ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
-            set -euo pipefail
-            docker login crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com \
-              -u "$ACR_USERNAME" -p "$ACR_PASSWORD"
-            docker pull "$IMAGE"
-            docker rm -f "$CONTAINER" || true
+          ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" "HOST_PORT=$HOST_PORT ACR_USERNAME=$ACR_USERNAME ACR_PASSWORD=$ACR_PASSWORD IMAGE=$IMAGE CONTAINER=$CONTAINER bash -s" <<'EOF'
+          set -euo pipefail
+          docker login crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com \
+            -u "$ACR_USERNAME" -p "$ACR_PASSWORD"
+          docker pull "$IMAGE"
+          docker rm -f "$CONTAINER" || true
 
-            # free host port if other container is using it
-            EXISTING_ON_PORT="$(docker ps -q --filter "publish=${HOST_PORT}" || true)"
-            if [ -n "$EXISTING_ON_PORT" ]; then
-              docker rm -f $EXISTING_ON_PORT || true
-            fi
+          # free host port if other container is using it
+          EXISTING_ON_PORT="$(docker ps -q --filter "publish=${HOST_PORT}" || true)"
+          if [ -n "$EXISTING_ON_PORT" ]; then
+            docker rm -f $EXISTING_ON_PORT || true
+          fi
 
-            docker run -d --name "$CONTAINER" -p "$HOST_PORT":80 "$IMAGE"
+          docker run -d --name "$CONTAINER" -p "$HOST_PORT":80 "$IMAGE"
           EOF
