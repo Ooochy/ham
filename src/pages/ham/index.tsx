@@ -262,7 +262,6 @@ export default function Ham() {
       ])
     }
   }
-
   async function loadBankQuestions(bankId: string) {
     setError('')
     setBank(null)
