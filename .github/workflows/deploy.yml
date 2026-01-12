@@ -69,7 +69,7 @@ jobs:
             docker rm -f "$CONTAINER" || true
 
             # free host port if other container is using it
-            EXISTING_ON_PORT=$(docker ps -q --filter "publish=${HOST_PORT}")
+            EXISTING_ON_PORT="$(docker ps -q --filter "publish=${HOST_PORT}" || true)"
             if [ -n "$EXISTING_ON_PORT" ]; then
               docker rm -f $EXISTING_ON_PORT || true
             fi
