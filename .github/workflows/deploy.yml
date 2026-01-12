@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          for var in SSH_HOST SSH_USER SSH_KEY ACR_USERNAME ACR_PASSWORD HOST_PORT; do
+          for var in SSH_HOST SSH_USER SSH_KEY ACR_USERNAME ACR_PASSWORD; do
             if [ -z "${!var:-}" ]; then
               echo "Missing required env: ${var}" >&2
               exit 1
@@ -63,15 +63,12 @@ jobs:
 
           ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
             set -euo pipefail
-            HOST_PORT="
-${HOST_PORT:-8080}"
             docker login crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com \
               -u "$ACR_USERNAME" -p "$ACR_PASSWORD"
             docker pull "$IMAGE"
             docker rm -f "$CONTAINER" || true
 
             # free host port if other container is using it
-            EXISTING_ON_PORT=""
             EXISTING_ON_PORT="$(docker ps -q --filter "publish=${HOST_PORT}" || true)"
             if [ -n "$EXISTING_ON_PORT" ]; then
               docker rm -f $EXISTING_ON_PORT || true
