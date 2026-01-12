@@ -531,7 +531,7 @@ export default function Ham() {
     <div className="hamPage" style={styles.page}>
       <div className="hamHeader" style={styles.header}>
         <h1 className="hamTitle" style={styles.h1}>
-          业余电台操作证书考试题库（2025年版）
+          业余电台操作证书考试题库（2025版）
         </h1>
         <div className="hamControls" style={styles.controls}>
           <label>
