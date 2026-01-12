@@ -1,5 +1,93 @@
 .hamPage {
 	min-height: 100dvh;
+	padding: 12px;
+	color: var(--text-primary);
+}
+
+.hamHeader {
+	position: sticky;
+	top: 12px;
+	z-index: 6;
+	background: rgba(255, 255, 255, 0.94);
+	border: 1px solid var(--border);
+	border-radius: 16px;
+	box-shadow: var(--shadow-soft);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+}
+
+.hamTitle {
+	font-size: 20px;
+	letter-spacing: 0.02em;
+	color: var(--text-primary);
+}
+
+.hamControls {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.hamControls label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 180px;
+}
+
+.hamControls .label {
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--text-secondary);
+}
+
+.hamSelect {
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: #fff;
+	padding: 10px 12px;
+	font-size: 14px;
+	box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+	transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.hamSelect:focus {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25);
+}
+
+.hamPdfLink {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 12px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: #fff;
+	color: var(--accent);
+	font-weight: 700;
+	box-shadow: var(--shadow-soft);
+	transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.hamPdfLink:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--shadow-strong);
+}
+
+.hamPdfLink:active {
+	transform: translateY(0);
+}
+
+.hamMain {
+	padding: 10px 0 4px;
+}
+
+.hamQuiz {
+	max-width: 1140px;
+	margin: 0 auto;
+	padding: 16px;
 }
 
 .hamRow {
@@ -8,11 +96,82 @@
 	}
 }
 
+.hamRow button {
+	border: 1px solid var(--accent);
+	background: var(--accent);
+	color: #fff;
+	font-weight: 700;
+	border-radius: 12px;
+	box-shadow: 0 12px 24px rgba(14, 165, 233, 0.25);
+	transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+
+.hamRow button:hover:not(:disabled) {
+	transform: translateY(-1px);
+	box-shadow: 0 16px 28px rgba(14, 165, 233, 0.28);
+	filter: saturate(1.05);
+}
+
+.hamRow button:active:not(:disabled) {
+	transform: translateY(0);
+}
+
+.hamRow button:disabled {
+	background: #e5eaf4;
+	border-color: #e5eaf4;
+	color: #9aa3b8;
+	box-shadow: none;
+	cursor: not-allowed;
+}
+
+.hamJumpInput {
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+	transition: box-shadow 150ms ease;
+}
+
+.hamJumpInput:focus {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25);
+}
+
+.hamQBox {
+	background: #fff;
+	border-radius: 18px;
+	border: 1px solid var(--border);
+	box-shadow: var(--shadow-strong);
+	padding: 18px;
+}
+
+.hamOptions label {
+	cursor: pointer;
+}
+
+.hamOptions input {
+	cursor: pointer;
+}
+
+@media (max-width: 960px) {
+	.hamHeader {
+		position: static;
+	}
+
+	.hamControls label {
+		min-width: unset;
+	}
+
+	.hamPdfLink {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
 @media (max-width: 640px) {
 	.hamHeader {
 		flex-direction: column;
 		align-items: flex-start;
-		gap: 8px;
+		gap: 10px;
 	}
 
 	.hamControls {
@@ -21,14 +180,16 @@
 	}
 
 	.hamControls label {
-    .label {
-      white-space: nowrap;
-    }
 		width: 100%;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 8px;
+		flex-direction: row;
+	}
+
+	.hamControls .label {
+		white-space: nowrap;
 	}
 
 	.hamSelect {

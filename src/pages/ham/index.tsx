@@ -146,7 +146,7 @@ export default function Ham() {
 
   const initialSaved = useMemo(() => readSavedPosition(), [])
 
-  const [mode, setMode] = useState<Mode>(() => (initialSaved ? 'quiz' : 'preview'))
+  const [mode, setMode] = useState<Mode>(() => ('quiz' as Mode))
   const [banks, setBanks] = useState<BankListItem[]>([])
   const [selectedBankId, setSelectedBankId] = useState<string>(() => initialSaved?.bankId || 'a')
   const [bank, setBank] = useState<BankPayload | null>(null)
@@ -542,7 +542,7 @@ export default function Ham() {
               value={mode}
               onChange={(e) => setMode(e.target.value as Mode)}
             >
-              <option value="preview">PDF 预览</option>
+              {/* <option value="preview">PDF 预览</option> */}
               <option value="quiz">逐题练习</option>
               <option value="wrong">错题模式</option>
             </select>
@@ -641,14 +641,7 @@ export default function Ham() {
               >
                 跳转
               </button>
-              <button
-                style={styles.button}
-                type="button"
-                disabled={!current}
-                onClick={checkAnswer}
-              >
-                提交判定
-              </button>
+
               <button
                 style={styles.button}
                 type="button"
@@ -656,6 +649,14 @@ export default function Ham() {
                 onClick={resetPerQuestionState}
               >
                 清空本题选择
+              </button>
+              <button
+                style={styles.button}
+                type="button"
+                disabled={!current}
+                onClick={checkAnswer}
+              >
+                提交判定
               </button>
             </div>
 
