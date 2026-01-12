@@ -258,7 +258,7 @@ export default function Ham() {
         { id: 'b', label: 'B类题库', hasQuestions: true, questionCount: 0, pdfUrl: '/api/pdfs/b' },
         { id: 'c', label: 'C类题库', hasQuestions: true, questionCount: 0, pdfUrl: '/api/pdfs/c' },
         { id: 'all', label: '总题库', hasQuestions: true, questionCount: 0, pdfUrl: '/api/pdfs/all' },
-        { id: 'all_img', label: '总题库附图标记', hasQuestions: false, questionCount: 0, pdfUrl: '/api/pdfs/all_img' }
+        { id: 'all_img', label: '总题库附图', hasQuestions: false, questionCount: 0, pdfUrl: '/api/pdfs/all_img' }
       ])
     }
   }
