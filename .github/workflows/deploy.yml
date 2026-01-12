@@ -1,6 +1,31 @@
-- name: Login to ACR
-  run: |
-    echo "${{ secrets.ACR_PASSWORD }}" | docker login \
-      ${{ secrets.ACR_REGISTRY }} \
-      -u ${{ secrets.ACR_USERNAME }} \
-      --password-stdin
+name: Build and Push to ACR
+
+on:
+  push:
+    branches:
+      - online
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to ACR
+        run: |
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login \
+            crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com \
+            -u "${{ secrets.ACR_USERNAME }}" \
+            --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t \
+            crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com/frontend/my-app:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push \
+            crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com/frontend/my-app:latest
