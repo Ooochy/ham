@@ -51,10 +51,16 @@ jobs:
           done
 
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+
+          if printf '%s' "$SSH_KEY" | head -1 | grep -q '^-----BEGIN'; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          else
+            printf '%s' "$SSH_KEY" | base64 -d | tr -d '\r' > ~/.ssh/id_rsa
+          fi
+
           chmod 600 ~/.ssh/id_rsa
 
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
+          ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
             set -euo pipefail
             docker login crpi-22g4bni5gtau27cy.cn-beijing.personal.cr.aliyuncs.com \
               -u "$ACR_USERNAME" -p "$ACR_PASSWORD"
