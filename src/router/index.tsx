@@ -17,12 +17,12 @@ export const router = createBrowserRouter([
       },
       {
         index: true,
-        handle: { title: '首页 - my-app' },
+        handle: { title: '首页' },
         element: <Home />
       },
       {
         path: '*',
-        handle: { title: '未找到页面 - my-app' },
+        handle: { title: '未找到页面404' },
         element: <NotFound />
       }
     ]

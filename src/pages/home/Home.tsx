@@ -60,7 +60,9 @@ export default function Home() {
       {/* 主页区域 */}
       <section id="home" className="hero">
         <div className="container">
-          <div className="avatar">👨‍💻</div>
+          <div className="avatar">
+            {/* 👨‍💻 */}
+          </div>
           <h1>欢迎访问我的主页</h1>
           {/* <div className="title">全栈工程师 | 设计爱好者</div> */}
           <p>
