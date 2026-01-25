@@ -34,6 +34,9 @@ export default function Home() {
       element.scrollIntoView({ behavior: 'smooth' })
     }
   }
+  const toHam = () => {
+    window.location.href = '/ham'
+  }
 
   return (
     <div className="homePage">
@@ -65,7 +68,10 @@ export default function Home() {
             拥有丰富的项目经验,对用户体验有深入理解。
           </p>
           <div className="socialLinks">
-            <a href="#" title="GitHub">
+            <a href="#" title="GitHub" onClick={(e) => {
+              e.preventDefault();
+              toHam();
+            }}>
               <span>🔗</span>
             </a>
             <a href="#" title="邮件">
