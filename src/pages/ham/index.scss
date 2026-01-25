@@ -2,6 +2,18 @@
 	min-height: 100dvh;
 	padding: 12px;
 	color: var(--text-primary);
+	background: var(--page-bg);
+}
+
+body.dark-mode {
+	--page-bg: #0f172a;
+	--text-primary: #f3f4f6;
+	--text-secondary: #c7ccd4;
+	--card-bg: #0b0b0b;
+	--border: #1f1f1f;
+	--accent: #38bdf8;
+	--shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
+	--shadow-strong: 0 16px 38px rgba(0, 0, 0, 0.45);
 }
 
 .hamHeader {
@@ -10,23 +22,36 @@
 	z-index: 6;
 	background: rgba(255, 255, 255, 0.94);
 	border: 1px solid var(--border);
+	border-bottom: 1px solid var(--border);
 	border-radius: 16px;
 	box-shadow: var(--shadow-soft);
 	backdrop-filter: blur(12px);
 	-webkit-backdrop-filter: blur(12px);
+	padding: 12px 16px;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+body.dark-mode .hamHeader {
+	background: rgba(5, 5, 5, 0.92);
 }
 
 .hamTitle {
 	font-size: 20px;
 	letter-spacing: 0.02em;
 	color: var(--text-primary);
+	display: flex;
+	align-items: center;
+	gap: 10px;
 }
 
 .hamControls {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 10px;
+	gap: 8px;
 }
 
 .hamControls label {
@@ -46,10 +71,15 @@
 	border: 1px solid var(--border);
 	border-radius: 12px;
 	background: #fff;
-	padding: 10px 12px;
+	padding: 6px 8px;
 	font-size: 14px;
 	box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 	transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+body.dark-mode .hamSelect {
+	background: #0b0b0b;
+	color: #e5e7eb;
 }
 
 .hamSelect:focus {
@@ -67,8 +97,40 @@
 	background: #fff;
 	color: var(--accent);
 	font-weight: 700;
+	font-size: 14px;
 	box-shadow: var(--shadow-soft);
 	transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+body.dark-mode .hamPdfLink {
+	background: #0b0b0b;
+	color: #7dd3fc;
+}
+
+.hamThemeToggle {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: #fff;
+	border: 1px solid var(--border);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1rem;
+	box-shadow: var(--shadow-soft);
+	transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.hamThemeToggle:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--shadow-strong);
+}
+
+body.dark-mode .hamThemeToggle {
+	background: #0b0b0b;
+	border: 1px solid #2b2b2b;
+	color: #f3f4f6;
 }
 
 .hamPdfLink:hover {
@@ -81,16 +143,42 @@
 }
 
 .hamMain {
+	flex: 1;
+	min-height: 0;
 	padding: 10px 0 4px;
+}
+
+.hamPanel {
+	height: 100%;
+	display: none;
+}
+
+.hamPanel.isActive {
+	display: block;
+}
+
+.hamViewer {
+	width: 100%;
+	height: 100%;
+	border: 0;
 }
 
 .hamQuiz {
 	max-width: 1140px;
 	margin: 0 auto;
 	padding: 16px;
+	height: 100%;
+	overflow: auto;
+	box-sizing: border-box;
 }
 
 .hamRow {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+	margin-bottom: 12px;
+
 	button {
 		touch-action: manipulation;
 	}
@@ -102,8 +190,17 @@
 	color: #fff;
 	font-weight: 700;
 	border-radius: 12px;
+	padding: 6px 10px;
+	font-size: 14px;
 	box-shadow: 0 12px 24px rgba(14, 165, 233, 0.25);
 	transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+
+body.dark-mode .hamRow button {
+	background: #111827;
+	border: 1px solid #374151;
+	color: #e5e7eb;
+	box-shadow: 0 12px 24px rgba(0, 0, 0, 0.6);
 }
 
 .hamRow button:hover:not(:disabled) {
@@ -124,11 +221,26 @@
 	cursor: not-allowed;
 }
 
+body.dark-mode .hamRow button:disabled {
+	background: #141414;
+	border-color: #1f1f1f;
+	color: #5b5b5b;
+	box-shadow: none;
+}
+
 .hamJumpInput {
 	border: 1px solid var(--border);
 	border-radius: 12px;
 	box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 	transition: box-shadow 150ms ease;
+	padding: 6px 8px;
+	font-size: 14px;
+	width: 180px;
+}
+
+body.dark-mode .hamJumpInput {
+	background: #0b0b0b;
+	color: #e5e7eb;
 }
 
 .hamJumpInput:focus {
@@ -142,6 +254,53 @@
 	border: 1px solid var(--border);
 	box-shadow: var(--shadow-strong);
 	padding: 18px;
+	max-width: 980px;
+}
+
+.hamQMeta {
+	font-size: 12px;
+	color: var(--text-secondary);
+	margin-bottom: 8px;
+}
+
+.hamQText {
+	font-size: 16px;
+	line-height: 1.5;
+	margin: 0 0 12px;
+	white-space: pre-wrap;
+}
+
+.hamOptions {
+	display: grid;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.hamOption {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	padding: 8px 10px;
+	border: 1px solid #e5e5e5;
+	border-radius: 8px;
+}
+
+body.dark-mode .hamOption {
+	border-color: #1f2937;
+}
+
+.hamResult,
+.hamEmpty {
+	font-size: 14px;
+}
+
+.hamError {
+	color: #b3261e;
+	font-size: 12px;
+}
+
+body.dark-mode .hamQBox {
+	background: #0b0b0b;
 }
 
 .hamOptions label {

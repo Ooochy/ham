@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import './index.scss'
 
@@ -197,6 +197,8 @@ function toDisplayAnswer(originalAnswer: string, originalToDisplay: Record<strin
 
 export default function Ham() {
   const apiBase = useMemo(() => getApiBase(), [])
+
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
   const initialSavedBankId = useMemo(() => readLastBankId(), [])
   const initialSaved = useMemo(
@@ -499,6 +501,29 @@ export default function Ham() {
   }, [])
 
   useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'light'
+    const isDark = savedTheme === 'dark'
+    setIsDarkMode(isDark)
+    if (isDark) {
+      document.body.classList.add('dark-mode')
+    } else {
+      document.body.classList.remove('dark-mode')
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    const nextIsDark = !isDarkMode
+    setIsDarkMode(nextIsDark)
+    if (nextIsDark) {
+      document.body.classList.add('dark-mode')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.body.classList.remove('dark-mode')
+      localStorage.setItem('theme', 'light')
+    }
+  }
+
+  useEffect(() => {
     // 记录最近选择的题库
     if (!selectedBankId) return
     writeLastBankId(selectedBankId)
@@ -540,43 +565,6 @@ export default function Ham() {
     })
   }, [mode, selectedBankId, index, current])
 
-  const styles: Record<string, CSSProperties> = {
-    page: { height: '100%', minHeight: '100dvh', display: 'flex', flexDirection: 'column' },
-    header: {
-      padding: '12px 16px',
-      borderBottom: '1px solid #e5e5e5',
-      display: 'flex',
-      gap: 12,
-      alignItems: 'center',
-      flexWrap: 'wrap'
-    },
-    h1: { fontSize: 16, margin: 0, fontWeight: 600 },
-    controls: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-    select: { padding: '6px 8px', fontSize: 14 },
-    main: { flex: 1, minHeight: 0 },
-    panel: { height: '100%', display: 'none' },
-    panelActive: { height: '100%', display: 'block' },
-    viewer: { width: '100%', height: '100%', border: 0 },
-    quiz: { height: '100%', overflow: 'auto', padding: 16, boxSizing: 'border-box' },
-    row: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 },
-    button: { padding: '6px 10px', fontSize: 14 },
-    jumpInput: { padding: '6px 8px', fontSize: 14, width: 180 },
-    qbox: { maxWidth: 980 },
-    qmeta: { fontSize: 12, color: '#666', marginBottom: 8 },
-    qtext: { fontSize: 16, lineHeight: 1.5, margin: '0 0 12px', whiteSpace: 'pre-wrap' },
-    options: { display: 'grid', gap: 8, marginBottom: 12 },
-    opt: {
-      display: 'flex',
-      gap: 10,
-      alignItems: 'flex-start',
-      padding: '8px 10px',
-      border: '1px solid #e5e5e5',
-      borderRadius: 8
-    },
-    hint: { fontSize: 12, color: '#666' },
-    error: { color: '#b3261e', fontSize: 12 }
-  }
-
   const questionSuffix =
     bank?.questions && sessionQuestions.length !== bank.questions.length
       ? `  |  练习集：随机${sessionQuestions.length}题`
@@ -586,20 +574,22 @@ export default function Ham() {
   const shuffleMap = current ? getShuffleMapForQuestion(current) : null
   const displayAnswer =
     current && shuffleMap ? toDisplayAnswer(current.answer || '', shuffleMap.originalToDisplay) : ''
-  const multi = current ? isMultiAnswer(displayAnswer) : false
+  const multi = true
 
   return (
-    <div className="hamPage" style={styles.page}>
-      <div className="hamHeader" style={styles.header}>
-        <h1 className="hamTitle" style={styles.h1}>
+    <div className="hamPage">
+      <div className="hamHeader">
+        <h1 className="hamTitle">
           业余电台操作证书考试题库（2025版）
+          <button className="hamThemeToggle" onClick={toggleTheme} title="切换主题" type="button">
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
         </h1>
-        <div className="hamControls" style={styles.controls}>
+        <div className="hamControls">
           <label>
             <div className="label">模式：</div>
             <select
               className="hamSelect"
-              style={styles.select}
               value={mode}
               onChange={(e) => setMode(e.target.value as Mode)}
             >
@@ -613,7 +603,6 @@ export default function Ham() {
             <div className="label">题库：</div>
             <select
               className="hamSelect"
-              style={styles.select}
               value={selectedBankId}
               onChange={(e) => {
                 setSelectedBankId(e.target.value)
@@ -632,24 +621,23 @@ export default function Ham() {
             </select>
           </label>
 
-          <a className="hamPdfLink" href={pdfUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14 }}>
+          <a className="hamPdfLink" href={pdfUrl} target="_blank" rel="noreferrer">
             新标签页打开原版题库PDF
           </a>
           {/* <span style={styles.hint}>后端：{apiBase}</span> */}
-          {error ? <span style={styles.error}>错误：{error}</span> : null}
+          {error ? <span className="hamError">错误：{error}</span> : null}
         </div>
       </div>
 
-      <div className="hamMain" style={styles.main}>
-        <section style={mode === 'preview' ? styles.panelActive : styles.panel}>
-          <iframe title="PDF 预览" style={styles.viewer} src={pdfUrl} />
+      <div className="hamMain">
+        <section className={`hamPanel ${mode === 'preview' ? 'isActive' : ''}`}>
+          <iframe title="PDF 预览" className="hamViewer" src={pdfUrl} />
         </section>
 
-        <section style={mode === 'quiz' || mode === 'wrong' ? styles.panelActive : styles.panel}>
-          <div className="hamQuiz" style={styles.quiz}>
-            <div className="hamRow" style={styles.row}>
+        <section className={`hamPanel ${mode === 'quiz' || mode === 'wrong' ? 'isActive' : ''}`}>
+          <div className="hamQuiz">
+            <div className="hamRow">
               <button
-                style={styles.button}
                 type="button"
                 disabled={!canQuizLoad}
                 onClick={() => (mode === 'wrong' ? loadWrongQuestions(selectedBankId) : loadBankQuestions(selectedBankId))}
@@ -658,7 +646,6 @@ export default function Ham() {
               </button>
               {mode === 'quiz' ? (
                 <button
-                  style={styles.button}
                   type="button"
                   disabled={!bank || sessionQuestions.length === 0}
                   onClick={random30}
@@ -667,7 +654,6 @@ export default function Ham() {
                 </button>
               ) : null}
               <button
-                style={styles.button}
                 type="button"
                 disabled={index <= 0}
                 onClick={() => setIndex((v) => Math.max(0, v - 1))}
@@ -675,7 +661,6 @@ export default function Ham() {
                 上一题
               </button>
               <button
-                style={styles.button}
                 type="button"
                 disabled={index >= sessionQuestions.length - 1}
                 onClick={() => setIndex((v) => Math.min(sessionQuestions.length - 1, v + 1))}
@@ -685,7 +670,6 @@ export default function Ham() {
 
               <input
                 className="hamJumpInput"
-                style={styles.jumpInput}
                 value={jumpValue}
                 placeholder="跳转：题号(如 12) / ID"
                 onChange={(e) => setJumpValue(e.target.value)}
@@ -695,7 +679,6 @@ export default function Ham() {
                 disabled={!bank || sessionQuestions.length === 0}
               />
               <button
-                style={styles.button}
                 type="button"
                 disabled={!bank || sessionQuestions.length === 0 || !jumpValue.trim()}
                 onClick={() => jumpTo(jumpValue)}
@@ -704,7 +687,6 @@ export default function Ham() {
               </button>
 
               <button
-                style={styles.button}
                 type="button"
                 disabled={!current}
                 onClick={resetPerQuestionState}
@@ -712,7 +694,6 @@ export default function Ham() {
                 清空本题选择
               </button>
               <button
-                style={styles.button}
                 type="button"
                 disabled={!current}
                 onClick={checkAnswer}
@@ -721,17 +702,17 @@ export default function Ham() {
               </button>
             </div>
 
-            <div style={styles.qbox}>
+            <div className="hamQBox">
               {current ? (
                 <>
-                  <div style={styles.qmeta}>
+                  <div className="hamQMeta">
                     来源：{bank?.source || '未加载'} ｜ 题目：{index + 1} / {sessionQuestions.length} ｜ ID：
                     {current.id}
                     {questionSuffix}
                     {mode === 'wrong' ? `  |  错题数：${wrongIdsForSelected.size}` : ''}
                   </div>
-                  <p style={styles.qtext}>{current.q}</p>
-                  <div style={styles.options}>
+                  <p className="hamQText">{current.q}</p>
+                  <div className="hamOptions">
                     {currentKeysSorted.map((displayKey) => {
                       const originalKey = shuffleMap?.displayToOriginal[displayKey]
                       const text = originalKey ? current.options[originalKey] : current.options[displayKey]
@@ -750,8 +731,8 @@ export default function Ham() {
                       return (
                         <label
                           key={displayKey}
+                          className="hamOption"
                           style={{
-                            ...styles.opt,
                             borderColor,
                             outline: isCorrect
                               ? '2px solid #2c7a2c'
@@ -776,10 +757,10 @@ export default function Ham() {
                       )
                     })}
                   </div>
-                  <div style={{ fontSize: 14 }}>{resultText}</div>
+                  <div className="hamResult">{resultText}</div>
                 </>
               ) : (
-                <div style={{ fontSize: 14 }}>
+                <div className="hamEmpty">
                   {mode === 'wrong'
                     ? '当前题库暂无错题（或尚未加载）。'
                     : '尚未加载题库数据。'}
