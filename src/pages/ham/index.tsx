@@ -653,21 +653,6 @@ export default function Ham() {
                   随机30题
                 </button>
               ) : null}
-              <button
-                type="button"
-                disabled={index <= 0}
-                onClick={() => setIndex((v) => Math.max(0, v - 1))}
-              >
-                上一题
-              </button>
-              <button
-                type="button"
-                disabled={index >= sessionQuestions.length - 1}
-                onClick={() => setIndex((v) => Math.min(sessionQuestions.length - 1, v + 1))}
-              >
-                下一题
-              </button>
-
               <input
                 className="hamJumpInput"
                 value={jumpValue}
@@ -692,6 +677,20 @@ export default function Ham() {
                 onClick={resetPerQuestionState}
               >
                 清空本题选择
+              </button>
+              <button
+                type="button"
+                disabled={index <= 0}
+                onClick={() => setIndex((v) => Math.max(0, v - 1))}
+              >
+                上一题
+              </button>
+              <button
+                type="button"
+                disabled={index >= sessionQuestions.length - 1}
+                onClick={() => setIndex((v) => Math.min(sessionQuestions.length - 1, v + 1))}
+              >
+                下一题
               </button>
               <button
                 type="button"
