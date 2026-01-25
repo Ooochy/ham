@@ -37,7 +37,10 @@ type SavedQuizPosition = {
   savedAt: number
 }
 
-const STORAGE_KEY_LAST_POSITION = 'ham:lastQuizPosition:v1'
+type SavedQuizPositionByBank = Record<string, SavedQuizPosition>
+
+const STORAGE_KEY_LAST_POSITION = 'ham:lastQuizPosition:v2'
+const STORAGE_KEY_LAST_POSITION_LEGACY = 'ham:lastQuizPosition:v1'
 
 const STORAGE_KEY_LAST_BANK = 'ham:lastSelectedBank:v1'
 
@@ -65,28 +68,59 @@ function writeWrongByBank(v: WrongByBank) {
   }
 }
 
-function readSavedPosition(): SavedQuizPosition | null {
+function readSavedPositions(): SavedQuizPositionByBank {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LAST_POSITION)
-    if (!raw) return null
-    const v = JSON.parse(raw) as Partial<SavedQuizPosition>
-    if (!v.bankId || !v.questionId) return null
-    const index = Number.isFinite(v.index as number) ? Number(v.index) : 0
-    const savedAt = Number.isFinite(v.savedAt as number) ? Number(v.savedAt) : Date.now()
-    return {
-      bankId: String(v.bankId),
-      questionId: String(v.questionId),
-      index: Math.max(0, index),
-      savedAt
+    if (raw) {
+      const v = JSON.parse(raw) as unknown
+      if (v && typeof v === 'object') return v as SavedQuizPositionByBank
     }
   } catch {
-    return null
+    // ignore
+  }
+
+  // 兼容旧版本单条记录
+  try {
+    const legacyRaw = localStorage.getItem(STORAGE_KEY_LAST_POSITION_LEGACY)
+    if (!legacyRaw) return {}
+    const legacy = JSON.parse(legacyRaw) as Partial<SavedQuizPosition>
+    if (!legacy.bankId || !legacy.questionId) return {}
+    const index = Number.isFinite(legacy.index as number) ? Number(legacy.index) : 0
+    const savedAt = Number.isFinite(legacy.savedAt as number) ? Number(legacy.savedAt) : Date.now()
+    return {
+      [String(legacy.bankId)]: {
+        bankId: String(legacy.bankId),
+        questionId: String(legacy.questionId),
+        index: Math.max(0, index),
+        savedAt
+      }
+    }
+  } catch {
+    return {}
   }
 }
 
-function writeSavedPosition(v: SavedQuizPosition) {
+function readSavedPosition(bankId: string): SavedQuizPosition | null {
+  if (!bankId) return null
+  const all = readSavedPositions()
+  const v = all[bankId]
+  if (!v || !v.questionId) return null
+  const index = Number.isFinite(v.index as number) ? Number(v.index) : 0
+  const savedAt = Number.isFinite(v.savedAt as number) ? Number(v.savedAt) : Date.now()
+  return {
+    bankId: String(v.bankId || bankId),
+    questionId: String(v.questionId),
+    index: Math.max(0, index),
+    savedAt
+  }
+}
+
+function writeSavedPosition(bankId: string, v: SavedQuizPosition) {
+  if (!bankId) return
   try {
-    localStorage.setItem(STORAGE_KEY_LAST_POSITION, JSON.stringify(v))
+    const all = readSavedPositions()
+    all[bankId] = v
+    localStorage.setItem(STORAGE_KEY_LAST_POSITION, JSON.stringify(all))
   } catch {
     // ignore
   }
@@ -112,7 +146,7 @@ function writeLastBankId(bankId: string) {
 
 function getApiBase(): string {
   const v = (import.meta as any).env?.VITE_HAM_API_BASE as string | undefined
-  return (v && v.trim()) || 'http://39.106.43.84'
+  return (v && v.trim()) || 'http://cuihongyu.com'
 }
 
 function escapeHtml(s: string): string {
@@ -164,8 +198,11 @@ function toDisplayAnswer(originalAnswer: string, originalToDisplay: Record<strin
 export default function Ham() {
   const apiBase = useMemo(() => getApiBase(), [])
 
-  const initialSaved = useMemo(() => readSavedPosition(), [])
   const initialSavedBankId = useMemo(() => readLastBankId(), [])
+  const initialSaved = useMemo(
+    () => (initialSavedBankId ? readSavedPosition(initialSavedBankId) : null),
+    [initialSavedBankId]
+  )
 
   const [mode, setMode] = useState<Mode>(() => ('quiz' as Mode))
   const [banks, setBanks] = useState<BankListItem[]>([])
@@ -297,7 +334,7 @@ export default function Ham() {
       const questions = data.questions || []
       setSessionQuestions(questions)
 
-      const saved = readSavedPosition()
+      const saved = readSavedPosition(bankId)
       if (saved && saved.bankId === bankId && saved.questionId && questions.length > 0) {
         const found = questions.findIndex((q) => q.id === saved.questionId)
         if (found >= 0) {
@@ -495,7 +532,7 @@ export default function Ham() {
     if (mode !== 'quiz') return
     const q = current
     if (!q) return
-    writeSavedPosition({
+    writeSavedPosition(selectedBankId, {
       bankId: selectedBankId,
       questionId: q.id,
       index,
