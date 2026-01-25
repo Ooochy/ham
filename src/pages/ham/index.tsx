@@ -39,6 +39,8 @@ type SavedQuizPosition = {
 
 const STORAGE_KEY_LAST_POSITION = 'ham:lastQuizPosition:v1'
 
+const STORAGE_KEY_LAST_BANK = 'ham:lastSelectedBank:v1'
+
 type WrongByBank = Record<string, string[]>
 
 const STORAGE_KEY_WRONG_BY_BANK = 'ham:wrongByBank:v1'
@@ -85,6 +87,24 @@ function readSavedPosition(): SavedQuizPosition | null {
 function writeSavedPosition(v: SavedQuizPosition) {
   try {
     localStorage.setItem(STORAGE_KEY_LAST_POSITION, JSON.stringify(v))
+  } catch {
+    // ignore
+  }
+}
+
+function readLastBankId(): string | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LAST_BANK)
+    if (!raw) return null
+    return String(raw)
+  } catch {
+    return null
+  }
+}
+
+function writeLastBankId(bankId: string) {
+  try {
+    localStorage.setItem(STORAGE_KEY_LAST_BANK, String(bankId))
   } catch {
     // ignore
   }
@@ -145,10 +165,13 @@ export default function Ham() {
   const apiBase = useMemo(() => getApiBase(), [])
 
   const initialSaved = useMemo(() => readSavedPosition(), [])
+  const initialSavedBankId = useMemo(() => readLastBankId(), [])
 
   const [mode, setMode] = useState<Mode>(() => ('quiz' as Mode))
   const [banks, setBanks] = useState<BankListItem[]>([])
-  const [selectedBankId, setSelectedBankId] = useState<string>(() => initialSaved?.bankId || 'a')
+  const [selectedBankId, setSelectedBankId] = useState<string>(
+    () => initialSaved?.bankId || initialSavedBankId || 'a'
+  )
   const [bank, setBank] = useState<BankPayload | null>(null)
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([])
   const [index, setIndex] = useState(0)
@@ -164,7 +187,6 @@ export default function Ham() {
   const optionShuffleByIdRef = useRef<Map<string, ShuffleMap>>(new Map())
   const bankCacheRef = useRef<Map<string, BankPayload>>(new Map())
   const inflightRef = useRef<Map<string, Promise<BankPayload>>>(new Map())
-  const restoredOnceRef = useRef(false)
 
   const selectedBank = useMemo(
     () => banks.find((b) => b.id === selectedBankId) || null,
@@ -440,17 +462,19 @@ export default function Ham() {
   }, [])
 
   useEffect(() => {
-    // 刷新/重进：如果上次在练习模式且有记录，则自动加载并恢复
-    if (restoredOnceRef.current) return
-    const saved = initialSaved
-    if (!saved) return
+    // 记录最近选择的题库
+    if (!selectedBankId) return
+    writeLastBankId(selectedBankId)
+  }, [selectedBankId])
+
+  useEffect(() => {
+    // 练习模式：进入页面或切换题库时自动加载并恢复上次题目
     if (mode !== 'quiz') return
     if (!canQuizLoad) return
-
-    restoredOnceRef.current = true
-    loadBankQuestions(saved.bankId)
+    if (!selectedBankId) return
+    loadBankQuestions(selectedBankId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, canQuizLoad, initialSaved])
+  }, [mode, selectedBankId, canQuizLoad])
 
   useEffect(() => {
     // 切到错题模式：显示当前题库全部错题
