@@ -66,8 +66,8 @@ export default function Home() {
           <h1>欢迎访问我的主页</h1>
           {/* <div className="title">全栈工程师 | 设计爱好者</div> */}
           <p>
-            我热衷于创造优雅的解决方案,致力于将创意转化为现实。
-            拥有丰富的项目经验,对用户体验有深入理解。
+            我把灵感当燃料,把bug当作彩蛋收藏。
+            生活的主线任务是好奇心,支线任务是把想法做成小作品。
           </p>
           <div className="socialLinks">
             <a href="#" title="GitHub" onClick={(e) => {
@@ -95,12 +95,12 @@ export default function Home() {
           <h2 className="sectionTitle">关于我</h2>
           <div className="aboutContent">
             <p>
-              我是一名充满热情的开发者,拥有 10000 年的编程经验。
-              始终追求代码质量和用户体验的完美结合。
+              我相信代码可以像笑话一样,简短却有梗。
+              偶尔灵感爆棚,偶尔灵感卡顿,但总能恢复出厂设置。
             </p>
             <p>
-              在工作中,我积极探索新技术,不断学习和成长。
-              热诚期待与志同道合的人合作,共同创造有意义的项目。
+              我喜欢把复杂的事说得简单,把无聊的事变得好玩。
+              如果你也爱折腾,我们一定能把世界多折腾一点点。
             </p>
             <a href="#contact" className="ctaButton" onClick={(e) => scrollToSection(e, 'contact')}>立即联系我</a>
           </div>

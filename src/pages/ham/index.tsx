@@ -218,6 +218,8 @@ export default function Ham() {
   const [revealed, setRevealed] = useState(false)
   const [resultText, setResultText] = useState<string>('')
   const [error, setError] = useState<string>('')
+  const [selectionsById, setSelectionsById] = useState<Record<string, string[]>>({})
+  const [randomSubmitted, setRandomSubmitted] = useState(false)
 
   const [jumpValue, setJumpValue] = useState<string>('')
 
@@ -241,12 +243,41 @@ export default function Ham() {
 
   const current = sessionQuestions[index] || null
 
+  const isRandomSet = Boolean(
+    bank?.questions && sessionQuestions.length > 0 && sessionQuestions.length !== bank.questions.length
+  )
+
   const wrongIdsForSelected = useMemo(() => {
     const ids = wrongByBank[selectedBankId] || []
     return new Set(ids)
   }, [wrongByBank, selectedBankId])
 
+  const answeredCount = useMemo(() => {
+    if (sessionQuestions.length === 0) return 0
+    let count = 0
+    for (const q of sessionQuestions) {
+      if (selectionsById[q.id]?.length) count++
+    }
+    return count
+  }, [sessionQuestions, selectionsById])
+
+  const randomConfig = useMemo(() => {
+    const configMap: Record<string, { single: number; multi: number }> = {
+      a: { single: 32, multi: 8 },
+      b: { single: 45, multi: 15 },
+      c: { single: 70, multi: 20 }
+    }
+    return configMap[selectedBankId] || null
+  }, [selectedBankId])
+
   function resetPerQuestionState() {
+    if (isRandomSet && current) {
+      const saved = selectionsById[current.id] || []
+      setSelected(new Set(saved))
+      setRevealed(false)
+      if (!randomSubmitted) setResultText('')
+      return
+    }
     setSelected(new Set())
     setRevealed(false)
     setResultText('')
@@ -329,6 +360,8 @@ export default function Ham() {
     setSessionQuestions([])
     setIndex(0)
     optionShuffleByIdRef.current = new Map()
+    setSelectionsById({})
+    setRandomSubmitted(false)
     resetPerQuestionState()
 
     const applyData = (data: BankPayload) => {
@@ -363,6 +396,8 @@ export default function Ham() {
     setSessionQuestions([])
     setIndex(0)
     optionShuffleByIdRef.current = new Map()
+    setSelectionsById({})
+    setRandomSubmitted(false)
     resetPerQuestionState()
 
     try {
@@ -421,19 +456,23 @@ export default function Ham() {
   }
 
   function toggleSelect(letter: string, multi: boolean) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (!multi) {
-        next.clear()
-        next.add(letter)
-        return next
-      }
-      if (next.has(letter)) next.delete(letter)
-      else next.add(letter)
-      return next
-    })
+    const next = new Set(selected)
+    if (!multi) {
+      next.clear()
+      next.add(letter)
+    } else if (next.has(letter)) next.delete(letter)
+    else next.add(letter)
+    setSelected(next)
+    if (current && isRandomSet) {
+      const arr = Array.from(next)
+      setSelectionsById((prev) => ({ ...prev, [current.id]: arr }))
+    }
     if (revealed) {
       setRevealed(false)
+      setResultText('')
+    }
+    if (isRandomSet && randomSubmitted) {
+      setRandomSubmitted(false)
       setResultText('')
     }
   }
@@ -482,16 +521,88 @@ export default function Ham() {
     }
   }
 
-  function random30() {
+  function submitRandomQuiz() {
+    if (!isRandomSet || sessionQuestions.length === 0) return
+    let score = 0
+    for (const q of sessionQuestions) {
+      const shuffleMap = getShuffleMapForQuestion(q)
+      const displayAnswer = toDisplayAnswer(q.answer || '', shuffleMap.originalToDisplay)
+      const correct = displayAnswer.split('').filter(Boolean)
+      const chosen = selectionsById[q.id] || []
+
+      const correctSet = new Set(correct)
+      const chosenSet = new Set(chosen)
+
+      let ok = correct.length === chosen.length
+      if (ok) {
+        for (const c of correctSet) {
+          if (!chosenSet.has(c)) {
+            ok = false
+            break
+          }
+        }
+      }
+      if (ok) score += 1
+    }
+    setRandomSubmitted(true)
+    setResultText(`完成！得分：${score}/${sessionQuestions.length}`)
+  }
+
+  function random() {
     if (!bank?.questions || bank.questions.length === 0) return
     const total = bank.questions.length
-    const n = Math.min(30, total)
-    const indices = Array.from({ length: total }, (_, i) => i)
-    shuffleInPlace(indices)
-    const chosen = indices.slice(0, n).sort((a, b) => a - b)
-    setSessionQuestions(chosen.map((i) => bank.questions[i]))
+    const configMap: Record<string, { single: number; multi: number }> = {
+      a: { single: 32, multi: 8 },
+      b: { single: 45, multi: 15 },
+      c: { single: 70, multi: 20 }
+    }
+    const cfg = configMap[selectedBankId]
+
+    if (!cfg) {
+      const n = Math.min(30, total)
+      const indices = Array.from({ length: total }, (_, i) => i)
+      shuffleInPlace(indices)
+      const chosen = indices.slice(0, n).sort((a, b) => a - b)
+      setSessionQuestions(chosen.map((i) => bank.questions[i]))
+      setIndex(0)
+      optionShuffleByIdRef.current = new Map()
+      resetPerQuestionState()
+      return
+    }
+
+    const singles = bank.questions.filter((q) => !isMultiAnswer(q.answer || ''))
+    const multis = bank.questions.filter((q) => isMultiAnswer(q.answer || ''))
+    shuffleInPlace(singles)
+    shuffleInPlace(multis)
+
+    const singleCount = Math.min(cfg.single, singles.length)
+    const multiCount = Math.min(cfg.multi, multis.length)
+    const totalTarget = Math.min(cfg.single + cfg.multi, total)
+
+    let chosenQuestions = [...singles.slice(0, singleCount), ...multis.slice(0, multiCount)]
+
+    if (chosenQuestions.length < totalTarget) {
+      const remaining = [
+        ...singles.slice(singleCount),
+        ...multis.slice(multiCount)
+      ]
+      shuffleInPlace(remaining)
+      chosenQuestions = chosenQuestions.concat(
+        remaining.slice(0, Math.min(totalTarget - chosenQuestions.length, remaining.length))
+      )
+    }
+
+    const indexById = new Map(bank.questions.map((q, i) => [q.id, i]))
+    const chosenIndices = chosenQuestions
+      .map((q) => indexById.get(q.id))
+      .filter((i): i is number => typeof i === 'number' && i >= 0)
+      .sort((a, b) => a - b)
+
+    setSessionQuestions(chosenIndices.map((i) => bank.questions[i]))
     setIndex(0)
     optionShuffleByIdRef.current = new Map()
+    setSelectionsById({})
+    setRandomSubmitted(false)
     resetPerQuestionState()
   }
 
@@ -550,11 +661,12 @@ export default function Ham() {
     // 切题时清理本题状态
     resetPerQuestionState()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index])
+  }, [index, isRandomSet, current])
 
   useEffect(() => {
     // 每次切题都把“当前题”持久化，刷新/重进能续上
     if (mode !== 'quiz') return
+    if (isRandomSet) return
     const q = current
     if (!q) return
     writeSavedPosition(selectedBankId, {
@@ -563,18 +675,45 @@ export default function Ham() {
       index,
       savedAt: Date.now()
     })
-  }, [mode, selectedBankId, index, current])
+  }, [mode, selectedBankId, index, current, isRandomSet])
+
+  const randomTargetCount = randomConfig ? randomConfig.single + randomConfig.multi : 30
+  const randomLabel = `随机${randomTargetCount}题`
 
   const questionSuffix =
     bank?.questions && sessionQuestions.length !== bank.questions.length
-      ? `  |  练习集：随机${sessionQuestions.length}题`
+      ? randomConfig
+        ? `  |  练习集：${randomLabel}`
+        : `  |  练习集：随机${sessionQuestions.length}题`
       : ''
 
   const currentKeysSorted = current ? Object.keys(current.options || {}).sort() : []
   const shuffleMap = current ? getShuffleMapForQuestion(current) : null
   const displayAnswer =
     current && shuffleMap ? toDisplayAnswer(current.answer || '', shuffleMap.originalToDisplay) : ''
-  const multi = true
+  const multi = current ? isMultiAnswer(current.answer || '') : true
+  const randomResultText =
+    isRandomSet && randomSubmitted && current
+      ? (() => {
+          const chosen = (selectionsById[current.id] || []).slice().sort().join('') || '未选'
+          const correctLetters = displayAnswer.split('').filter(Boolean)
+          const chosenLetters = (selectionsById[current.id] || []).slice().sort()
+          const correctSet = new Set(correctLetters)
+          const chosenSet = new Set(chosenLetters)
+          let ok = correctLetters.length === chosenLetters.length
+          if (ok) {
+            for (const c of correctSet) {
+              if (!chosenSet.has(c)) {
+                ok = false
+                break
+              }
+            }
+          }
+          return `${ok ? '正确 ✅' : '错误 ❌'}（正确答案：${
+            displayAnswer || '未知'
+          }；你的选择：${chosen}）`
+        })()
+      : ''
 
   return (
     <div className="hamPage">
@@ -648,9 +787,9 @@ export default function Ham() {
                 <button
                   type="button"
                   disabled={!bank || sessionQuestions.length === 0}
-                  onClick={random30}
+                  onClick={random}
                 >
-                  随机30题
+                  {randomLabel}
                 </button>
               ) : null}
               <input
@@ -692,13 +831,20 @@ export default function Ham() {
               >
                 下一题
               </button>
-              <button
-                type="button"
-                disabled={!current}
-                onClick={checkAnswer}
-              >
-                提交判定
-              </button>
+              {!isRandomSet ? (
+                <button
+                  type="button"
+                  disabled={!current}
+                  onClick={checkAnswer}
+                >
+                  提交判定
+                </button>
+              ) : null}
+              {isRandomSet && answeredCount === sessionQuestions.length ? (
+                <button type="button" onClick={submitRandomQuiz}>
+                  提交
+                </button>
+              ) : null}
             </div>
 
             <div className="hamQBox">
@@ -708,6 +854,7 @@ export default function Ham() {
                     来源：{bank?.source || '未加载'} ｜ 题目：{index + 1} / {sessionQuestions.length} ｜ ID：
                     {current.id}
                     {questionSuffix}
+                    {isRandomSet ? `  |  题型：${multi ? '多选' : '单选'}` : ''}
                     {mode === 'wrong' ? `  |  错题数：${wrongIdsForSelected.size}` : ''}
                   </div>
                   <p className="hamQText">{current.q}</p>
@@ -756,7 +903,12 @@ export default function Ham() {
                       )
                     })}
                   </div>
-                  <div className="hamResult">{resultText}</div>
+                  <div className="hamResult">
+                    {isRandomSet && randomSubmitted ? randomResultText : resultText}
+                  </div>
+                  {isRandomSet && randomSubmitted ? (
+                    <div className="hamResult">{resultText}</div>
+                  ) : null}
                 </>
               ) : (
                 <div className="hamEmpty">
